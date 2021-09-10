@@ -1,0 +1,821 @@
+<?php
+	include_once('functions-admin.inc.php');
+	
+	function age($naiss)
+	{
+		list($annee, $mois, $jour) = preg_split('/-/', $naiss);
+		$today['mois'] = date('n');
+		$today['jour'] = date('j');
+		$today['annee'] = date('Y');
+		$annees = $today['annee'] - $annee;
+		if ($today['mois'] <= $mois) {
+			if ($mois == $today['mois']) {
+				if ($jour > $today['jour'])
+					$annees--;
+			}
+			else
+				$annees--;
+		}
+		return $annees;
+	}
+	
+	function br2nl($foo)
+	{
+		return preg_replace("/\<br\s*\/?\>/i", "", $foo);
+	}
+	
+	function setLinkWithLang($link)
+	{
+		return str_replace('ayumibay.com', 'ayumibay.com/'.Lang::getLang(), $link);
+	}
+	
+	function isError(&$array, $key)
+	{
+		return (in_array($key, $array)) ? 'class="error" ' : '';
+	}
+	
+	function getSexuality($value, &$XMLReader)
+	{
+		$array_sexuality = $XMLReader->getArray('includes-sexuality');
+		return $array_sexuality[$value];
+	}
+	
+	function getEthnicity($value, &$XMLReader)
+	{
+		$array_ethnicity = $XMLReader->getArray('includes-ethnicity');
+		return $array_ethnicity[$value];
+	}
+	
+	function getSex($value, &$XMLReader)
+	{
+		$array_sex = $XMLReader->getArray('includes-sex');
+		return $array_sex[$value];
+	}
+	
+	function setCurrency($value, &$XMLReader)
+	{
+		$currency = $XMLReader->getXML('includes-currency');
+		
+		if(!empty($value))
+		{
+			if(is_numeric($value))
+			{
+				if($currency->position == 'before') return $currency->symbol.$value;
+				return $value.$currency->symbol;
+			}
+		}
+		
+		return $value ;                  
+	}
+	
+	function getAge($birthdate)
+	{
+		list($annee, $mois, $jour) = preg_split('/-/', $birthdate);
+		$today['mois'] = date('n');
+		$today['jour'] = date('j');
+		$today['annee'] = date('Y');
+		$annees = $today['annee'] - $annee;
+		if ($today['mois'] <= $mois) {
+			if ($mois == $today['mois']) {
+				if ($jour > $today['jour'])
+					$annees--;
+			}
+			else
+				$annees--;
+		}
+		return $annees;
+	}
+	
+	function getAdvertType($value, &$XMLReader)
+	{
+		$array_type = $XMLReader->getArray('includes-type');
+		return $array_type[$value];
+	}
+	
+	function amIallowed(&$MySQL, $id)
+	{
+		if(empty($id) || !is_numeric($id)) 
+			return false;
+		if($MySQL->getCountSQL("escorts", "WHERE `id` = '".$id."'") == 0)
+			return false ;
+		
+		return true ;
+	}
+	
+	function getCountries(&$MySQL)
+	{
+		if($MySQL->getCountSQL("countries") == 0)
+			return 0 ;
+		
+		$counties = $MySQL->getSQL("SELECT `abbreviation`, `fullname` FROM `countries` ORDER BY `fullname`");
+		return $counties ;
+	}
+	
+	function getCountry(&$MySQL, $abbr)
+	{
+		$data = $MySQL->getSQL("SELECT `fullname` FROM `countries` WHERE `abbreviation`='$abbr'");
+		return (!empty($data[0]['fullname'])) ? $data[0]['fullname'] : "Unknown";
+	}
+	
+	function getCounties(&$MySQL, $country = '')
+	{
+		if(!empty($country))
+		{
+			if($MySQL->getCountSQL("counties", "WHERE `Country` = '".$country."'") == 0)
+				return 0 ;
+		
+			$counties = $MySQL->getSQL("SELECT `CountyID`, `County` FROM `counties` WHERE `Country` = '".$country."' ORDER BY `Country`, `County` ASC");
+			return $counties ;
+		}
+		
+		if($MySQL->getCountSQL("counties") == 0)
+			return 0 ;
+		
+		$counties = $MySQL->getSQL("SELECT `CountyID`, LCASE(`Country`) AS `Country`, `County` FROM `counties` ORDER BY `Country`, `County` ASC");
+		return $counties ;
+	}
+	
+	function getCounty(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		if($MySQL->getCountSQL("counties", "WHERE `CountyID` = '".$id."'") == 0)
+			return 0 ;
+		
+		$county = $MySQL->getSQL("SELECT `County` FROM `counties` WHERE `CountyID` = '".$id."'");
+		return $county[0]['County'] ;
+	}
+	
+	function validMail($email)
+	{
+		return filter_var($email, FILTER_VALIDATE_EMAIL);
+	}
+	
+	function getAdverts(&$MySQL, $county)
+	{
+		$county = htmlspecialchars($county);
+		
+		if($MySQL->getCountSQL("escorts", "WHERE `county`='".$county."'") == 0)
+			return 0 ;
+		
+		$adverts = $MySQL->getSQL("SELECT `id`, `name`, `pic1`, `email_activation`, `admin_activation` FROM `escorts` WHERE `county`='".$county."'");
+		return $adverts;
+	}
+	
+	function getAdvertDetails(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		 /* AND `admin_activation`=1"*/
+		if($MySQL->getCountSQL("escorts", "WHERE `id`='$id' AND `email_activation`=1") != 1)
+			return 0 ;
+		
+		$advert = $MySQL->getSQL("SELECT `type`, `name`, `sex`, `birthdate`, `display-age`, `ethnicity`, `sexuality`, `county`, `infos`, `email`, `display-email`, `contact`, `display-contact`, `isIncall`, `ihh`, `ioh`, `ith`, `in`, `ion`, `isOutcall`, `ohh`, `ooh`, `oth`, `on`, `oon`, `pic1`, `pic2`, `pic3` FROM `escorts` WHERE `id`='$id' AND `email_activation`=1");
+		return $advert[0] ;
+	}
+	
+	function isActivated(&$MySQL)
+	{
+		$id = htmlspecialchars($_SESSION['loginid']);
+		
+		return ($MySQL->getCountSQL("escorts", "WHERE `id`='$id' AND `email_activation`=1 AND `admin_activation`=1") != 1) ? false : true;
+	}
+	
+	function getValuesToSession(&$MySQL)
+	{
+		$id = htmlspecialchars($_SESSION['loginid']);
+		
+		if($MySQL->getCountSQL("escorts", "WHERE `id`='$id' AND `email_activation`=1 AND `admin_activation`=1") != 1)
+			return -1 ;
+		
+		$advert = $MySQL->getSQL("SELECT `type`, `name`, `sex`, `birthdate`, `display-age`, `ethnicity`, `sexuality`, `county`, `infos`, `email`, `display-email`, `contact`, `display-contact`, `isIncall`, `ihh`, `ioh`, `ith`, `in`, `ion`, `isOutcall`, `ohh`, `ooh`, `oth`, `on`, `oon` FROM `escorts` WHERE `id`='$id' AND `email_activation`=1 AND `admin_activation`=1");
+		$advert = $advert[0] ;
+		
+		$birthdate = explode('-', $advert['birthdate']);
+		
+		$_SESSION['type'] = $advert['type'];
+		$_SESSION['name'] = $advert['name'];
+		$_SESSION['sex'] = $advert['sex'];
+		$_SESSION['year'] = $birthdate[0];
+		$_SESSION['month'] = $birthdate[1];
+		$_SESSION['day'] = $birthdate[2];
+		$_SESSION['display-age'] = $advert['display-age'];
+		$_SESSION['ethnicity'] = $advert['ethnicity'];
+		$_SESSION['sexuality'] = $advert['sexuality'];
+		$_SESSION['county'] = $advert['county'];
+		$_SESSION['info'] = $advert['infos'];
+		$_SESSION['email'] = $advert['email'];
+		$_SESSION['display-email'] = $advert['display-email'];
+		$_SESSION['contact'] = $advert['contact'];
+		$_SESSION['display-contact'] = $advert['display-contact'];
+		$_SESSION['isIncall'] = $advert['isIncall'];
+		$_SESSION['irhh'] = $advert['ihh'];
+		$_SESSION['iroh'] = $advert['ioh'];
+		$_SESSION['irth'] = $advert['ith'];
+		$_SESSION['irn'] = $advert['in'];
+		$_SESSION['iron'] = $advert['ion'];
+		$_SESSION['isOutcall'] = $advert['isOutcall'];
+		$_SESSION['orhh'] = $advert['ohh'];
+		$_SESSION['oroh'] = $advert['ooh'];
+		$_SESSION['orth'] = $advert['oth'];
+		$_SESSION['orn'] = $advert['on'];
+		$_SESSION['oron'] = $advert['oon'];
+		
+		return true ;
+	}
+	
+	function isFeaturedAdvert(&$MySQL)
+	{
+		$lang = Lang::getLang();
+		return $MySQL->getCountSQL("escorts`, `counties", "WHERE `escorts`.`email_activation`=1 AND `escorts`.`admin_activation`=1 AND `escorts`.`featured`=1 AND `escorts`.`county`=`counties`.`CountyID` AND `counties`.`Country`='$lang'");
+	}
+	
+	function getSingleFeaturedAdvertDetails(&$MySQL)
+	{
+		$advert = $MySQL->getSQL("SELECT `type`, `id`, `name`, `sex`, `birthdate`, `ethnicity`, `sexuality`, `county`, `infos`, `email`, `contact`, `isIncall`, `ihh`, `ioh`, `ith`, `in`, `ion`, `isOutcall`, `ohh`, `ooh`, `oth`, `on`, `oon`, `pic1`, `pic2`, `pic3` FROM `escorts` WHERE `featured`=1 AND `email_activation`=1 AND `admin_activation`=1");
+		return $advert[0] ;
+	}
+	
+	function isUserWaiting(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+
+		return $MySQL->getCountSQL("escorts", "WHERE `county`=$id AND `email_activation`=0");
+	}
+	
+	function isAdminWaiting(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		return $MySQL->getCountSQL("escorts", "WHERE `county`=$id AND `email_activation`=1 AND `admin_activation`=0");
+	}
+	
+	function isCountryUserWaiting(&$MySQL, $country)
+	{
+		$id = htmlspecialchars($country);
+		
+		return $MySQL->getCountSQL("escorts`, `counties", "WHERE `escorts`.`county`=`counties`.`CountyID` AND `counties`.`Country`='$id' AND `escorts`.`email_activation`=0");
+	}
+	
+	function isCountryAdminWaiting(&$MySQL, $country)
+	{
+		$id = htmlspecialchars($country);
+		
+		return $MySQL->getCountSQL("escorts`, `counties", "WHERE `escorts`.`county`=`counties`.`CountyID` AND `counties`.`Country`='$id' AND `escorts`.`email_activation`=1 AND `escorts`.`admin_activation`=0");
+	}
+	
+	function getAdvertDetailsForAdmin(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		if($MySQL->getCountSQL("escorts", "WHERE `id`='$id'") != 1)
+			return 0 ;
+		
+		$advert = $MySQL->getSQL("SELECT `type`, `name`, `sex`, `birthdate`, `display-age`, `ethnicity`, `sexuality`, `county`, `infos`, `email`, `display-email`, `contact`, `display-contact`, `isIncall`, `ihh`, `ioh`, `ith`, `in`, `ion`, `isOutcall`, `ohh`, `ooh`, `oth`, `on`, `oon`, `email_activation`, `admin_activation`, `featured` FROM `escorts` WHERE `id`='$id'");
+		return $advert[0] ;
+	}
+	
+	function sendActivationMail($mail)
+	{
+		$mail = htmlspecialchars($mail);
+		$entete = "From: Ayumibay <advert@ayumibay.com>\n";
+		$entete .= "Content-Type: text/html\n";
+		$entete .= "MIME-Version: 1.0\n";
+		
+		$sujet = 'Account validation on Ayumibay';
+		$message = 'Hi<br><br>';
+		$message .= 'An admin has just approved your account. It is now visible by everyone.<br><br>';
+		$message .= 'This mail was send automatically, it is useless to respond to it!';
+		
+		mail($mail,$sujet,$message,$entete);
+	}
+	
+	function setAdvertDetailsFromAdmin(&$MySQL, $values, $id)
+	{
+		$values['birthdate'] = $values['year'].'-'.$values['month'].'-'.$values['day'];
+		$allowedKeys = array('type', 'name', 'sex', 'birthdate', 'ethnicity', 'sexuality', 'county', 'infos', 'email', 'contact', 'ihh', 'ioh', 'ith', 'in', 'ion', 'ohh', 'ooh', 'oth', 'on', 'oon');
+		$checkboxKeys = array('display-age', 'display-email', 'display-contact', 'isIncall', 'isOutcall', 'email_activation', 'admin_activation', 'featured');
+		$sql = '' ;
+		$id = htmlspecialchars($id);
+		
+		if($values['admin_activation'])
+		{
+			$retValue = $MySQL->getSQL("SELECT `admin_activation` FROM `escorts` WHERE `id`='$id'");
+			if($retValue[0]['admin_activation'] == 0)
+			{
+				sendActivationMail($values['email']);
+			}
+		}
+		
+		foreach($values as $key => $value)
+		{			
+			if(in_array($key, $allowedKeys))
+			{
+				$sql .= '`'.$key.'`=\''.htmlspecialchars($value).'\', ';
+			}
+		}
+		
+		foreach($checkboxKeys as $key)
+		{
+			$value = (isset($values[$key]) && $values[$key] == 1) ? 1 : 0 ;
+			$sql .= '`'.$key.'`='.htmlspecialchars($value).', ';
+		}
+		
+		if(strlen($sql) == 0)
+			return FALSE ;
+		
+		$sql = substr($sql, 0, -2) ;
+				
+		$MySQL->setSQL("UPDATE `escorts` SET ".$sql." WHERE `id`='$id'");
+		$mail = htmlspecialchars($values['email']);
+		try {
+			$MySQL->setSQL("INSERT INTO `mails`(`mail`) VALUES('$mail')");
+		} catch(Exception $e) {}
+		return TRUE ;
+	}
+	
+/************
+ ** County **
+ ************/
+	
+	/* Function addCountyFromAdmin
+	 * Add a county from admin page
+	 * @param $MySQL SQL connection
+	 * @param $values Values from the form
+	 * @see boolean
+	 * @return FALSE if values is empty, TRUE if the add is done
+	 */
+	function addCountyFromAdmin(&$MySQL, $values)
+	{
+		$allowedKeys = array('County', 'Country', 'CountyLogo', 'CountyLogoAlt');
+		$sqlKeys = '';
+		$sqlValues = '';
+		
+		foreach($values as $key => $value)
+		{
+			if(in_array($key, $allowedKeys) && !empty($value))
+			{
+				$sqlKeys .= '`'.$key.'`, ';
+				$sqlValues .= '\''.htmlspecialchars($value).'\', ';
+			}
+		}
+		
+		if(strlen($sqlKeys) == 0)
+			return FALSE ;
+		
+		$sqlKeys = substr($sqlKeys, 0, -2);
+		$sqlValues = substr($sqlValues, 0, -2);
+		
+		$MySQL->setSQL("INSERT INTO `counties` ($sqlKeys) VALUES ($sqlValues)");
+		return TRUE ;
+	}
+	
+	/* Function updateCountyFromAdmin
+	 * Update a county from admin page
+	 * @param $MySQL SQL connection
+	 * @param $values Updated values of the county
+	 * @see boolean
+	 * @return FALSE if no modification, TRUE if update is done
+	 */
+	function updateCountyFromAdmin(&$MySQL, $values, $id)
+	{
+		$allowedKeys = array('County', 'Country', 'CountyLogo', 'CountyLogoAlt');
+		$sql = '';
+		$id = htmlspecialchars($id);
+		
+		foreach($values as $key => $value)
+		{
+			if(in_array($key, $allowedKeys) && !empty($value))
+			{
+				$sql .= '`'.$key.'`=\''.htmlspecialchars($value).'\', ';
+			}
+		}
+		
+		if(strlen($sql) == 0)
+			return FALSE ;
+		
+		$sql = substr($sql, 0, -2) ;
+		
+		$MySQL->setSQL("UPDATE `counties` SET ".$sql." WHERE `CountyID`='$id'");
+		return TRUE ;
+	}
+	
+	/* Function removeCountyFromAdmin
+	 * Remove a county from database
+	 * @param $MySQL SQL connection
+	 * @param $id County id
+	 * @see boolean
+	 * @return TRUE when county is deleted
+	 */
+	function removeCountyFromAdmin(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		$MySQL->setSQL("DELETE FROM `counties` WHERE `CountyID`='$id'");
+		return TRUE ;
+	}
+	
+	/* Function getCountyDetails
+	 * Retrieve all details of a county
+	 * @param $MySQL SQL connection
+	 * @param $id County id
+	 * @return 0 if no county with this id else all details
+	 */
+	function getCountyDetails(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		if($MySQL->getCountSQL("counties", "WHERE `CountyID`='$id'") != 1)
+			return 0 ;
+		
+		$county = $MySQL->getSQL("SELECT `Country`, `County`, `CountyLogo`, `CountyLogoAlt` FROM `counties` WHERE `CountyID`='$id'");
+		return $county[0] ;
+	}
+	
+	/* Function getCountyName
+	 * Retrieve county name from id
+	 * @param $MySQL SQL connection
+	 * @param $id County id
+	 * @return -1 if no county with this id, else county name
+	 */
+	function getCountyName(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		if($MySQL->getCountSQL("counties", "WHERE `CountyID`=$id") == 0)
+			return -1 ;
+		
+		$tmp = $MySQL->getSQL("SELECT `County` FROM `counties` WHERE `CountyID`=$id");
+		return $tmp[0]['County'] ;
+	}
+
+/*************
+ ** Country **
+ *************/
+	
+	/* Function addCountryFromAdmin
+	 * Add a country from admin page
+	 * @param $MySQL SQL connection
+	 * @param $values Values from the form
+	 * @see boolean
+	 * @return FALSE if values is empty, TRUE if the add is done
+	 */
+	function addCountryFromAdmin(&$MySQL, $values)
+	{
+		$allowedKeys = array('abbreviation', 'fullname');
+		$sqlKeys = '';
+		$sqlValues = '';
+		
+		foreach($values as $key => $value)
+		{
+			if(in_array($key, $allowedKeys) && !empty($value))
+			{
+				$sqlKeys .= '`'.$key.'`, ';
+				$sqlValues .= '\''.htmlspecialchars($value).'\', ';
+			}
+		}
+		
+		if(strlen($sqlKeys) == 0)
+			return FALSE ;
+		
+		$sqlKeys = substr($sqlKeys, 0, -2);
+		$sqlValues = substr($sqlValues, 0, -2);
+
+		$MySQL->setSQL("INSERT INTO `countries` ($sqlKeys) VALUES ($sqlValues)");
+		return TRUE ;
+	}
+	
+	/* Function updateCountryFromAdmin
+	 * Update a country from admin page
+	 * @param $MySQL SQL connection
+	 * @param $values Updated values of the county
+	 * @see boolean
+	 * @return FALSE if no modification, TRUE if update is done
+	 */
+	function updateCountryFromAdmin(&$MySQL, $values, $id)
+	{
+		$allowedKeys = array('abbreviation', 'fullname');
+		$sql = '';
+		$id = htmlspecialchars($id);
+		
+		foreach($values as $key => $value)
+		{
+			if(in_array($key, $allowedKeys) && !empty($value))
+			{
+				$sql .= '`'.$key.'`=\''.htmlspecialchars($value).'\', ';
+			}
+		}
+		
+		if(strlen($sql) == 0)
+			return FALSE ;
+		
+		$sql = substr($sql, 0, -2) ;
+		
+		$MySQL->setSQL("UPDATE `countries` SET ".$sql." WHERE `id`='$id'");
+		return TRUE ;
+	}
+	
+	/* Function removeCountryFromAdmin
+	 * Remove a country from database
+	 * @param $MySQL SQL connection
+	 * @param $id Country id
+	 * @see boolean
+	 * @return TRUE when country is deleted
+	 */
+	function removeCountryFromAdmin(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		$MySQL->setSQL("DELETE FROM `countries` WHERE `id`='$id'");
+		return TRUE ;
+	}
+	
+	/* Function getCountryDetails
+	 * Retrieve all details of a country
+	 * @param $MySQL SQL connection
+	 * @param $id Country id
+	 * @return 0 if no country with this id else all details
+	 */
+	function getCountryDetails(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		if($MySQL->getCountSQL("countries", "WHERE `id`='$id'") != 1)
+			return 0 ;
+		
+		$country = $MySQL->getSQL("SELECT `abbreviation`, `fullname` FROM `countries` WHERE `id`='$id'");
+		return $country[0] ;
+	}
+	
+	/* Function getCountryName
+	 * Retrieve country name from id
+	 * @param $MySQL SQL connection
+	 * @param $id Country id
+	 * @return -1 if no country with this id, else country name
+	 */
+	function getCountryName(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		if($MySQL->getCountSQL("countries", "WHERE `id`=$id") == 0)
+			return -1 ;
+		
+		$tmp = $MySQL->getSQL("SELECT `fullname` FROM `countries` WHERE `id`=$id");
+		return $tmp[0]['fullname'] ;
+	}
+
+/************
+ ** Errors **
+ ************/
+	
+	/* Function removeErrorFromAdmin
+	 * Remove an error log from database
+	 * @param $MySQL SQL connection
+	 * @param $id Error log id
+	 * @see boolean
+	 * @return TRUE when error log is deleted
+	 */
+	function removeErrorFromAdmin(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		$MySQL->setSQL("DELETE FROM `error_log` WHERE `id`='$id'");
+		return TRUE ;
+	}
+	
+	function countProfilePictures(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		$advert = $MySQL->getSQL("SELECT `pic1`, `pic2`, `pic3` FROM `escorts` WHERE `id`=$id");
+		
+		$countPicture = 0;
+		foreach($advert[0] as $pic)
+		{
+			if(empty($pic)) break ;
+			$countPicture++ ;
+		}
+		
+		return $countPicture ;
+	}
+	
+	function getCountyAdverts(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		if($MySQL->getCountSQL("escorts", "WHERE `county`='$id'AND `email_activation`=1 AND `admin_activation`=1") == 0)
+			return 0 ;
+		
+		$list = $MySQL->getSQL("SELECT `id`, `type`, `pic1`, `name` FROM `escorts` WHERE `county`='$id' AND `email_activation`=1 AND `admin_activation`=1 ORDER BY `lastmodified` DESC");
+		return $list ;
+	}
+	
+	function getFeaturedAdverts(&$MySQL)
+	{
+		$lang = Lang::getLang();
+		$list = $MySQL->getSQL("SELECT `escorts`.`id`, `escorts`.`type`, `escorts`.`pic1` FROM `escorts`, `counties` WHERE `escorts`.`featured`=1 AND `escorts`.`email_activation`=1 AND `escorts`.`admin_activation`=1 AND `escorts`.`county`=`counties`.`CountyID` AND `counties`.`Country`='$lang'");
+		return $list ;
+	}
+	
+	function removePicturesFromAdmin(&$MySQL, $id, $pic)
+	{
+		$id = htmlspecialchars($id);
+		$picture = 'pic'.htmlspecialchars($pic);
+		$allowedRows = array('pic1', 'pic2', 'pic3');
+				
+		if(!in_array($picture, $allowedRows)) return FALSE ;
+		
+		$advert = $MySQL->getSQL("SELECT `pic1`, `pic2`, `pic3` FROM `escorts` WHERE `id`=$id");
+		if(empty($advert[0]['pic2'])) return FALSE ;
+		
+		if($pic == 3)
+		{
+			$MySQL->setSQL("UPDATE `escorts` SET `$picture`='' WHERE `id`=$id");
+		} else {
+			for($i=$pic; $i<3; $i++)
+			{
+				$j = $i+1 ;				
+				$MySQL->setSQL("UPDATE `escorts` SET `pic".$i."`=`pic".$j."`, `pic".$j."`='' WHERE `id`=$id");
+			}
+		}
+		
+		$pictureName = $advert[0][$picture];
+		
+		unlink('../includes/register-form/pics/'.$id.'/'.$pictureName.'.jpg');
+		unlink('../includes/register-form/pics/'.$id.'/'.$pictureName.'_thumb.jpg');
+		
+		return TRUE ;
+	}
+	
+	function countProfilesInCounty(&$MySQL, $id)
+	{
+		$id = htmlspecialchars($id);
+		
+		return $MySQL->getCountSQL("escorts", "WHERE `county`=$id");
+	}
+	
+	function setAdvertPictureFromAdmin(&$MySQL, $pics, $id)
+	{
+		$error = '' ;
+		
+		$path_upload = '../includes/register-form/pics/'.$id.'/' ;
+		if(!file_exists($path_upload))
+			mkdir($path_upload);
+		
+		foreach($pics as $picture)
+		{	
+			if(empty($picture['name']))
+			{	
+				$error = 'No file was sent!';
+				break ;
+			}
+			
+			if($picture['error'])
+			{
+				switch($picture['error'])
+				{
+					case 1: // UPLOAD_ERR_INI_SIZE
+						$error = 'File '.$picture['name'].' size is over server limit max size allowed!';
+						break;
+					case 2: // UPLOAD_ERR_FORM_SIZE
+						$error = 'File '.$picture['name'].' size is over formular limit max size allowed!';
+						break;
+					case 3: // UPLOAD_ERR_PARTIAL
+						$error = 'Sending of file '.$picture['name'].' has been interrupted!';
+						break;
+					case 4: // UPLOAD_ERR_NO_FILE
+						$error = 'File '.$picture['name'].' is empty!';
+						break;
+				}
+				
+				break ;
+			}
+			
+			else if($picture['type'] != 'image/jpeg')
+			{
+				$error = 'Your file '.$picture['name'].' is not a correct JPEG file !' ;
+				break ;
+			}
+			
+			else
+			{
+				$md5name = $tmpPic = md5($picture['name'].time());
+				
+				move_uploaded_file($picture['tmp_name'], $path_upload.$tmpPic.'.jpg');
+				
+				$img = imagecreatefromjpeg($path_upload.$tmpPic.'.jpg');
+				$width = imagesx($img);
+				$height = imagesy($img);
+				
+				$maxDim = 233 ;
+				
+				if($width < $height)
+				{
+					$new_height = $maxDim ;
+					$new_width = floor( $width * ( $maxDim / $height ) );
+				} else {
+					$new_width = $maxDim ;
+					$new_height = floor( $height * ( $maxDim / $width ) );
+				}
+				
+				$tmp_img = imagecreatetruecolor($new_width, $new_height);
+				imagecopyresized($tmp_img, $img, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
+				imagejpeg($tmp_img, $path_upload.$tmpPic.'_thumb.jpg');
+			}
+		}
+		
+		if(!empty($error)) return $error ;
+		
+		switch(countProfilePictures($MySQL, $id))
+		{
+			case 0:
+				$sql = 'pic1';
+				break;
+			case 1:
+				$sql = 'pic2';
+				break;
+			case 2:
+				$sql = 'pic3';
+				break;
+			default:
+				$error = 'Cannot add another picture to this profile!';
+		}
+		
+		if(!empty($error)) return $error ;
+		
+		$MySQL->setSQL("UPDATE `escorts` SET `$sql`='$md5name' WHERE `id`=$id");
+		
+		return 'Advert updated!';
+	}
+	
+	function savePicturesInDb($id, $arrayPictures, $MySQL)
+	{
+		$mysql_request = "UPDATE `escorts` SET ";
+		$count = 1;
+		foreach($arrayPictures as $picture)
+		{
+			$mysql_request .= "`pic".$count++."`='".$picture."', ";
+		}
+		$mysql_request = substr($mysql_request, 0, -2);
+		$mysql_request .= " WHERE `id`=".$id;
+
+		$MySQL->setSQL($mysql_request);
+	}
+	
+	function generatePassword()
+	{
+		return rand(1000, 9999)*10000+rand(1000,9999);
+	}
+	
+	function cryptPassword($pwd)
+	{
+		return md5('I'.$pwd.'Ayumi');
+	}
+		
+	function getPhotographerLink()
+	{
+		switch(Lang::getLangSpecial())
+		{
+			case 'ae': $link ='435'; break;
+			case 'ar': $link ='569'; break;
+			case 'au': $link='556'; break;
+			case 'be': $link='565'; break;
+			case 'br': $link='570'; break;
+			case 'ca': $link='555'; break;
+			case 'cl': $link='572'; break;
+			case 'cn': $link='596'; break;
+			case 'cz': $link='571'; break;
+			case 'de': $link='573'; break;
+			case 'dk': $link='559'; break;
+			case 'es': $link='557'; break;
+			case 'fr': $link='558'; break;
+			case 'gb': $link='93'; break;
+			case 'hk': $link='612'; break;
+			case 'id': $link='574'; break;
+			case 'it': $link='568'; break;
+			case 'ie': $link='563'; break;
+			case 'in': $link='576'; break;
+			case 'jp': $link='577'; break;
+			case 'kr': $link='578'; break;	
+			case 'mx': $link='580'; break;
+			case 'my': $link='581'; break;
+			case 'nl': $link='582'; break;
+			case 'no': $link='583'; break;
+			case 'nz': $link='585'; break;
+			case 'pe': $link='586'; break;
+			case 'ph': $link='562'; break;
+			case 'pk': $link='588'; break;
+			case 'qa': $link='589'; break;
+			case 'ro': $link='590'; break;
+			case 'sd': $link='616'; break;
+			case 'sg': $link='566'; break;
+			case 'sw': $link='591'; break;
+			case 'tr': $link='593'; break;
+			case 'tw': $link='614'; break;	
+			case 'us': $link='554'; break;
+			case 've': $link='595'; break;
+			default: $link = '93';
+		}
+		
+		return $link;
+	}
+?>
